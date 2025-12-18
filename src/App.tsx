@@ -24,13 +24,13 @@ export const App: React.FC = () => {
   const [newTitle, setNewTitle] = useState('');
   const [filter, setFilter] = useState<'all' | 'active' | 'completed'>('all');
   const [errorMessage, setErrorMessage] = useState<ErrorMessage>(null);
-  const [loadingTodoId, setLoadingTodoId] = useState<number | null>(null);
+  const [loadingTodoIds, setLoadingTodoIds] = useState<number[]>([]);
   const [isAddind, setIsAdding] = useState(false);
 
   const inputRef = useRef<HTMLInputElement>(null);
 
   const isLoading = (todoId: number) => {
-    return loadingTodoId === todoId;
+    return loadingTodoIds.includes(todoId);
   };
 
   const showErrorMessage = (error: ErrorMessage) => {
@@ -76,7 +76,7 @@ export const App: React.FC = () => {
     };
 
     setTempTodo(newTempTodo);
-    setLoadingTodoId(0);
+    setLoadingTodoIds([0]);
 
     todosService
       .createTodo({
@@ -95,14 +95,14 @@ export const App: React.FC = () => {
         setValue(newTempTodo.title);
       })
       .finally(() => {
-        setLoadingTodoId(null);
+        setLoadingTodoIds([]);
         setIsAdding(false);
         setTimeout(() => inputRef.current?.focus(), 0);
       });
   };
 
   const removeTodo = (todoId: number) => {
-    setLoadingTodoId(todoId);
+    setLoadingTodoIds([todoId]);
 
     todosService
       .removeTodo(todoId)
@@ -113,7 +113,7 @@ export const App: React.FC = () => {
         showErrorMessage('Unable to delete a todo');
       })
       .finally(() => {
-        setLoadingTodoId(null);
+        setLoadingTodoIds([]);
         inputRef.current?.focus();
       });
   };
@@ -154,8 +154,28 @@ export const App: React.FC = () => {
   const completedTodos = todos.filter(todo => todo.completed);
 
   const clearCompletedTodo = () => {
-    completedTodos.forEach(todo => todosService.removeTodo(todo.id));
-    setTodos(prev => prev.filter(todo => !todo.completed));
+    setLoadingTodoIds(completedTodos.map(todo => todo.id));
+
+    Promise.allSettled(
+      completedTodos.map(todo => todosService.removeTodo(todo.id)),
+    )
+      .then(results => {
+        const failedIds = completedTodos
+          .filter((_, index) => results[index].status === 'rejected')
+          .map(todo => todo.id);
+
+        if (failedIds.length > 0) {
+          showErrorMessage('Unable to delete a todo');
+        }
+
+        setTodos(prev =>
+          prev.filter(todo => !todo.completed || failedIds.includes(todo.id)),
+        );
+      })
+      .finally(() => {
+        setLoadingTodoIds([]);
+        inputRef.current?.focus();
+      });
   };
 
   const visibleTodos = todos.filter(todo => {
@@ -258,6 +278,7 @@ export const App: React.FC = () => {
                       'is-active': isLoading(todo.id),
                     })}
                   >
+                    {/* eslint-disable-next-line max-len */}
                     <div className="modal-background has-background-white-ter " />
                     <div className="loader" />
                   </div>
@@ -271,16 +292,14 @@ export const App: React.FC = () => {
                   <label className="todo__status-label">
                     <input type="checkbox" className="todo__status" disabled />
                   </label>
-
                   <span data-cy="TodoTitle" className="todo__title">
                     {tempTodo.title}
                   </span>
-
                   <button type="button" className="todo__remove" disabled>
                     ×
                   </button>
-
                   <div data-cy="TodoLoader" className="modal overlay is-active">
+                    {/* eslint-disable-next-line max-len */}
                     <div className="modal-background has-background-white-ter" />
                     <div className="loader" />
                   </div>
