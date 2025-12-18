@@ -5,16 +5,11 @@ import { UserWarning } from './UserWarning';
 import { USER_ID } from './api/todos';
 import * as todosService from './api/todos';
 import { Todo } from './types/Todo';
+import { ErrorMessage } from './types/ErrorMessage';
+import { Filter } from './types/Filter';
 import classNames from 'classnames';
 import { CSSTransition, TransitionGroup } from 'react-transition-group';
 
-type ErrorMessage =
-  | 'Unable to load todos'
-  | 'Title should not be empty'
-  | 'Unable to add a todo'
-  | 'Unable to delete a todo'
-  | 'Unable to update a todo'
-  | null;
 
 export const App: React.FC = () => {
   const [todos, setTodos] = useState<Todo[]>([]);
@@ -22,7 +17,7 @@ export const App: React.FC = () => {
   const [value, setValue] = useState('');
   const [editing, setEditing] = useState<number | null>(null);
   const [newTitle, setNewTitle] = useState('');
-  const [filter, setFilter] = useState<'all' | 'active' | 'completed'>('all');
+  const [filter, setFilter] = useState<Filter>(Filter.All);
   const [errorMessage, setErrorMessage] = useState<ErrorMessage>(null);
   const [loadingTodoIds, setLoadingTodoIds] = useState<number[]>([]);
   const [isAddind, setIsAdding] = useState(false);
@@ -147,7 +142,7 @@ export const App: React.FC = () => {
     );
   };
 
-  const changeFilter = (newFilter: 'all' | 'active' | 'completed') => {
+  const changeFilter = (newFilter: Filter) => {
     setFilter(newFilter);
   };
 
@@ -196,14 +191,12 @@ export const App: React.FC = () => {
 
       <div className="todoapp__content">
         <header className="todoapp__header">
-          {/* this button should have `active` class only if all todos are completed */}
           <button
             type="button"
             className="todoapp__toggle-all active"
             data-cy="ToggleAllButton"
           />
 
-          {/* Add a todo on form submit */}
           <form onSubmit={handleSubmit}>
             <input
               ref={inputRef}
@@ -318,7 +311,7 @@ export const App: React.FC = () => {
             <nav className="filter" data-cy="Filter">
               <a
                 href="#/"
-                onClick={() => changeFilter('all')}
+                onClick={() => changeFilter(Filter.All)}
                 className={classNames('filter__link', {
                   selected: filter === 'all',
                 })}
@@ -329,7 +322,7 @@ export const App: React.FC = () => {
 
               <a
                 href="#/active"
-                onClick={() => changeFilter('active')}
+                onClick={() => changeFilter(Filter.Active)}
                 className={classNames('filter__link', {
                   selected: filter === 'active',
                 })}
@@ -340,7 +333,7 @@ export const App: React.FC = () => {
 
               <a
                 href="#/completed"
-                onClick={() => changeFilter('completed')}
+                onClick={() => changeFilter(Filter.Completed)}
                 className={classNames('filter__link', {
                   selected: filter === 'completed',
                 })}
@@ -350,7 +343,6 @@ export const App: React.FC = () => {
               </a>
             </nav>
 
-            {/* this button should be disabled if there are no completed todos */}
             <button
               type="button"
               className="todoapp__clear-completed"
@@ -364,8 +356,6 @@ export const App: React.FC = () => {
         )}
       </div>
 
-      {/* DON'T use conditional rendering to hide the notification */}
-      {/* Add the 'hidden' class to hide the message smoothly */}
       <div
         data-cy="ErrorNotification"
         className={classNames(
